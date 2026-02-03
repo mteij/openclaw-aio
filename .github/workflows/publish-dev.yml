@@ -1,0 +1,164 @@
+name: Build Dev Image (Upstream Commit)
+
+on:
+  # Webhook trigger from OpenClaw repo (or any external system)
+  repository_dispatch:
+    types: [openclaw-commit]
+
+  # Hourly check for new commits
+  schedule:
+    - cron: "0 * * * *"
+
+  # Manual trigger with optional commit SHA
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: "Specific commit SHA to build (leave empty for all new commits)"
+        required: false
+        default: ""
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Job 1: Determine which commits need building
+  find-commits:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.commits.outputs.matrix }}
+      count: ${{ steps.commits.outputs.count }}
+    steps:
+      - name: Find commits to build
+        id: commits
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # If manual input provided, use that single commit
+          if [ -n "${{ github.event.inputs.commit_sha }}" ]; then
+            SHA="${{ github.event.inputs.commit_sha }}"
+            SHORT_SHA=${SHA:0:7}
+            echo "matrix=[{\"sha\":\"$SHA\",\"short_sha\":\"$SHORT_SHA\"}]" >> $GITHUB_OUTPUT
+            echo "count=1" >> $GITHUB_OUTPUT
+            echo "Building specific commit: $SHA"
+            exit 0
+          fi
+
+          # If webhook payload has SHA, use that
+          if [ -n "${{ github.event.client_payload.sha }}" ]; then
+            SHA="${{ github.event.client_payload.sha }}"
+            SHORT_SHA=${SHA:0:7}
+            echo "matrix=[{\"sha\":\"$SHA\",\"short_sha\":\"$SHORT_SHA\"}]" >> $GITHUB_OUTPUT
+            echo "count=1" >> $GITHUB_OUTPUT
+            echo "Building webhook commit: $SHA"
+            exit 0
+          fi
+
+          # Scheduled run: get last 24 commits and filter unbuilt ones
+          echo "Fetching recent commits from OpenClaw main branch..."
+          COMMITS=$(curl -s "https://api.github.com/repos/openclaw/openclaw/commits?sha=main&per_page=24" | jq -r '.[].sha')
+
+          MATRIX="["
+          COUNT=0
+          FIRST=true
+
+          for SHA in $COMMITS; do
+            SHORT_SHA=${SHA:0:7}
+            
+            # Check if image already exists
+            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              "https://ghcr.io/v2/${{ github.repository }}/manifests/dev-$SHORT_SHA" 2>/dev/null || echo "000")
+            
+            if [ "$RESPONSE" != "200" ]; then
+              if [ "$FIRST" = true ]; then
+                FIRST=false
+              else
+                MATRIX="$MATRIX,"
+              fi
+              MATRIX="$MATRIX{\"sha\":\"$SHA\",\"short_sha\":\"$SHORT_SHA\"}"
+              COUNT=$((COUNT + 1))
+              echo "Will build: $SHORT_SHA"
+            else
+              echo "Already exists: $SHORT_SHA"
+            fi
+          done
+
+          MATRIX="$MATRIX]"
+
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+          echo "count=$COUNT" >> $GITHUB_OUTPUT
+          echo "Found $COUNT commits to build"
+
+  # Job 2: Build each commit (matrix strategy)
+  build-dev:
+    needs: find-commits
+    if: needs.find-commits.outputs.count != '0'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        commit: ${{ fromJson(needs.find-commits.outputs.matrix) }}
+      max-parallel: 1 # Build sequentially to avoid resource issues
+      fail-fast: false
+
+    steps:
+      - name: Checkout our repo
+        uses: actions/checkout@v4
+
+      - name: Log in to Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          build-args: |
+            OPENCLAW_VERSION=${{ matrix.commit.sha }}
+            BREW_PACKAGES=ALL
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:dev-${{ matrix.commit.short_sha }}
+
+  # Job 3: Update dev-latest tag after all builds complete
+  update-latest:
+    needs: [find-commits, build-dev]
+    if: needs.find-commits.outputs.count != '0'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout our repo
+        uses: actions/checkout@v4
+
+      - name: Get latest commit SHA
+        id: latest
+        run: |
+          LATEST=$(curl -s https://api.github.com/repos/openclaw/openclaw/commits/main | jq -r .sha)
+          echo "sha=$LATEST" >> $GITHUB_OUTPUT
+          echo "short_sha=${LATEST:0:7}" >> $GITHUB_OUTPUT
+
+      - name: Log in to Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push dev-latest
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          build-args: |
+            OPENCLAW_VERSION=${{ steps.latest.outputs.sha }}
+            BREW_PACKAGES=ALL
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:dev-latest

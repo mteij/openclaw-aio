@@ -41,6 +41,15 @@ RUN /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/instal
 ENV PATH="/home/linuxbrew/.linuxbrew/bin:${PATH}"
 RUN echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /home/node/.bashrc
 
+# --- 4b. Install Brew Packages (optional) ---
+# BREW_PACKAGES: empty (default), space-separated list, or "ALL" for common tools
+ARG BREW_PACKAGES=""
+RUN if [ "$BREW_PACKAGES" = "ALL" ]; then \
+      brew install gh ffmpeg ripgrep tmux openai-whisper openhue-cli himalaya; \
+    elif [ -n "$BREW_PACKAGES" ]; then \
+      brew install $BREW_PACKAGES; \
+    fi
+
 # --- 5. Install Playwright ---
 USER root
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright

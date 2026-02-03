@@ -1,38 +1,23 @@
-# 🦞 OpenClaw AIO (All-In-One)
+# 🦞 OpenClaw AIO
 
-Builds from the [official source](https://github.com/openclaw/openclaw), pre-installed with **Homebrew**, **Playwright (Browsers included)**, and system tools (`git`, `curl`, `jq`).
+Pre-built [OpenClaw](https://github.com/openclaw/openclaw) Docker image with Homebrew + Playwright included.
 
-###  Usage (Docker Compose)
-Replace `yourusername` with your GitHub handle.
+**Skills-ready:** gh, ffmpeg, ripgrep, tmux, whisper, openhue, himalaya pre-installed.
 
-```yaml
-services:
-  openclaw-gateway:
-    image: ghcr.io/yourusername/openclaw-aio:latest
-    container_name: openclaw-gateway
-    restart: unless-stopped
-    volumes:
-      - openclaw_home:/home/node
-      - ./config:/home/node/.openclaw
-      - ./workspace:/home/node/.openclaw/workspace
-    environment:
-      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}
-      - OPENCLAW_SKIP_SERVICE_CHECK=true
-    command: ["gateway"]
+## Usage
 
-  openclaw-cli:
-    image: ghcr.io/yourusername/openclaw-aio:latest
-    container_name: openclaw-cli
-    stdin_open: true
-    tty: true
-    volumes:
-      - openclaw_home:/home/node
-      - ./config:/home/node/.openclaw
-      - ./workspace:/home/node/.openclaw/workspace
-    environment:
-      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}
-    entrypoint: ["node", "/app/dist/index.js"]
-    profiles: ["cli"]
+```bash
+git clone https://github.com/MTEIJ/openclaw-aio.git && cd openclaw-aio
+cp .env.example .env
+docker compose run --rm openclaw-cli onboard
+docker compose up -d openclaw-gateway
+```
 
-volumes:
-  openclaw_home:
+## Tags
+
+| Tag          | Description        |
+| ------------ | ------------------ |
+| `latest`     | Stable release     |
+| `v2026.x.x`  | Specific version   |
+| `dev-latest` | Latest main branch |
+| `dev-<sha>`  | Specific commit    |

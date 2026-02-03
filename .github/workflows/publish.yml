@@ -1,9 +1,12 @@
-name: Check Upstream and Release
+name: Build Release Image (Stable)
 
 on:
+  # Webhook trigger for release events
+  repository_dispatch:
+    types: [openclaw-release]
   schedule:
     # Run every day at 04:00 UTC to check for updates
-    - cron: '0 4 * * *'
+    - cron: "0 4 * * *"
   workflow_dispatch: # Allows manual trigger button
 
 env:
@@ -19,7 +22,7 @@ jobs:
 
     steps:
       - name: Checkout our repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       # 1. Get the latest release tag from OpenClaw Official Repo
       - name: Get latest upstream release
@@ -29,24 +32,40 @@ jobs:
           echo "Found latest version: $LATEST_TAG"
           echo "tag=$LATEST_TAG" >> $GITHUB_OUTPUT
 
-      # 2. Log in to your Container Registry
+      # 2. Check if this version's image already exists
+      - name: Check if image exists
+        id: check
+        run: |
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "https://ghcr.io/v2/${{ github.repository }}/manifests/${{ steps.upstream.outputs.tag }}")
+          if [ "$RESPONSE" = "200" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Image ${{ steps.upstream.outputs.tag }} already exists, skipping build"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Image does not exist, proceeding with build"
+          fi
+
+      # 3. Log in to your Container Registry
       - name: Log in to Registry
-        uses: docker/login-action@v2
+        if: steps.check.outputs.exists != 'true'
+        uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 3. Build and Push (Using the version we found)
+      # 4. Build and Push (Using the version we found)
       - name: Build and Push Docker image
-        uses: docker/build-push-action@v4
+        if: steps.check.outputs.exists != 'true'
+        uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          # PASS THE VERSION TO DOCKERFILE HERE:
           build-args: |
             OPENCLAW_VERSION=${{ steps.upstream.outputs.tag }}
-          # Create two tags: 'v2026.2.1' and 'latest'
+            BREW_PACKAGES=ALL
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.upstream.outputs.tag }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
