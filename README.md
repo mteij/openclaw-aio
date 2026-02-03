@@ -15,9 +15,15 @@ docker compose up -d openclaw-gateway
 
 ## Tags
 
-| Tag          | Description        |
-| ------------ | ------------------ |
-| `latest`     | Stable release     |
-| `v2026.x.x`  | Specific version   |
-| `dev-latest` | Latest main branch |
-| `dev-<sha>`  | Specific commit    |
+| Tag              | Description         |
+| ---------------- | ------------------- |
+| `latest`         | Stable (default)    |
+| `latest-full`    | Stable (all tools)  |
+| `v2026.x.x`      | Version (default)   |
+| `v2026.x.x-full` | Version (all tools) |
+| `dev-latest`     | Dev (default)       |
+| `dev-<sha>`      | Commit (default)    |
+
+**Default:** gh, ffmpeg, ripgrep, tmux, whisper, openhue, himalaya
+
+**Full:** Default + gemini, gifgrep, gog, goplaces, camsnap, obsidian-cli, ordercli, sag, songsee, summarize, wacli, uv

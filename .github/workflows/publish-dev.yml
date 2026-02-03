@@ -122,7 +122,7 @@ jobs:
           push: true
           build-args: |
             OPENCLAW_VERSION=${{ matrix.commit.sha }}
-            BREW_PACKAGES=ALL
+            BREW_PACKAGES=DEFAULT
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:dev-${{ matrix.commit.short_sha }}
 
@@ -159,6 +159,6 @@ jobs:
           push: true
           build-args: |
             OPENCLAW_VERSION=${{ steps.latest.outputs.sha }}
-            BREW_PACKAGES=ALL
+            BREW_PACKAGES=DEFAULT
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:dev-latest
