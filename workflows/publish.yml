@@ -1,0 +1,52 @@
+name: Check Upstream and Release
+
+on:
+  schedule:
+    # Run every day at 04:00 UTC to check for updates
+    - cron: '0 4 * * *'
+  workflow_dispatch: # Allows manual trigger button
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  check-and-build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout our repo
+        uses: actions/checkout@v3
+
+      # 1. Get the latest release tag from OpenClaw Official Repo
+      - name: Get latest upstream release
+        id: upstream
+        run: |
+          LATEST_TAG=$(curl -s https://api.github.com/repos/openclaw/openclaw/releases/latest | jq -r .tag_name)
+          echo "Found latest version: $LATEST_TAG"
+          echo "tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+
+      # 2. Log in to your Container Registry
+      - name: Log in to Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 3. Build and Push (Using the version we found)
+      - name: Build and Push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          # PASS THE VERSION TO DOCKERFILE HERE:
+          build-args: |
+            OPENCLAW_VERSION=${{ steps.upstream.outputs.tag }}
+          # Create two tags: 'v2026.2.1' and 'latest'
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.upstream.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
