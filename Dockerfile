@@ -42,14 +42,15 @@ ENV PATH="/home/linuxbrew/.linuxbrew/bin:${PATH}"
 RUN echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /home/node/.bashrc
 
 # --- 4b. Install Brew Packages ---
-# BREW_PACKAGES: "DEFAULT" (common tools), "FULL" (all skills), or custom list
+# BREW_PACKAGES: "DEFAULT" (none), "FULL" (all skill tools), or custom list
 ARG BREW_PACKAGES="DEFAULT"
 RUN if [ "$BREW_PACKAGES" = "FULL" ]; then \
-      brew install gh ffmpeg ripgrep tmux openai-whisper openhue-cli himalaya \
-        gemini gifgrep gog goplaces camsnap obsidian-cli ordercli sag songsee summarize wacli uv; \
-    elif [ "$BREW_PACKAGES" = "DEFAULT" ]; then \
-      brew install gh ffmpeg ripgrep tmux openai-whisper openhue-cli himalaya; \
-    elif [ -n "$BREW_PACKAGES" ]; then \
+      brew tap steipete/tap && \
+      brew tap openhue/cli && \
+      brew install gh ffmpeg ripgrep tmux openai-whisper himalaya uv \
+        gemini-cli openhue-cli \
+        gifgrep gog goplaces camsnap obsidian-cli ordercli sag songsee summarize wacli; \
+    elif [ "$BREW_PACKAGES" != "DEFAULT" ] && [ -n "$BREW_PACKAGES" ]; then \
       brew install $BREW_PACKAGES; \
     fi
 

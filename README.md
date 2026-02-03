@@ -2,8 +2,6 @@
 
 Pre-built [OpenClaw](https://github.com/openclaw/openclaw) Docker image with Homebrew + Playwright included.
 
-**Skills-ready:** gh, ffmpeg, ripgrep, tmux, whisper, openhue, himalaya pre-installed.
-
 ## Usage
 
 ```bash
@@ -15,15 +13,15 @@ docker compose up -d openclaw-gateway
 
 ## Tags
 
-| Tag              | Description         |
-| ---------------- | ------------------- |
-| `latest`         | Stable (default)    |
-| `latest-full`    | Stable (all tools)  |
-| `v2026.x.x`      | Version (default)   |
-| `v2026.x.x-full` | Version (all tools) |
-| `dev-latest`     | Dev (default)       |
-| `dev-<sha>`      | Commit (default)    |
+| Tag              | Description                             |
+| ---------------- | --------------------------------------- |
+| `latest`         | Stable (Homebrew ready, no packages)    |
+| `latest-full`    | Stable (all skill tools pre-installed)  |
+| `v2026.x.x`      | Version (Homebrew ready, no packages)   |
+| `v2026.x.x-full` | Version (all skill tools pre-installed) |
+| `dev-latest`     | Dev (Homebrew ready, no packages)       |
+| `dev-<sha>`      | Commit (Homebrew ready, no packages)    |
 
-**Default:** gh, ffmpeg, ripgrep, tmux, whisper, openhue, himalaya
+**Default:** Homebrew installed and ready. Install packages as needed with `brew install <package>`.
 
-**Full:** Default + gemini, gifgrep, gog, goplaces, camsnap, obsidian-cli, ordercli, sag, songsee, summarize, wacli, uv
+**Full:** gh, ffmpeg, ripgrep, tmux, whisper, himalaya, uv, gemini-cli, openhue-cli, gifgrep, gog, goplaces, camsnap, obsidian-cli, ordercli, sag, songsee, summarize, wacli
