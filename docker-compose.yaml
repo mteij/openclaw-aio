@@ -2,28 +2,33 @@ services:
   openclaw-gateway:
     image: ghcr.io/mteij/openclaw-aio:latest
     container_name: openclaw-gateway
-    environment:
-      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-}
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
     volumes:
       - ~/.openclaw:/home/node/.openclaw
       - ~/.openclaw/workspace:/home/node/.openclaw/workspace
     ports:
       - "${OPENCLAW_GATEWAY_PORT:-18789}:18789"
       - "${OPENCLAW_BRIDGE_PORT:-18790}:18790"
+    environment:
+      - NODE_ENV=production
+      - OPENCLAW_SKIP_SERVICE_CHECK=true
+      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-}
     init: true
-    restart: unless-stopped
     command:
       ["gateway", "--bind", "${OPENCLAW_GATEWAY_BIND:-lan}", "--port", "18789"]
 
   openclaw-cli:
     image: ghcr.io/mteij/openclaw-aio:latest
     container_name: openclaw-cli
-    environment:
-      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-}
+    stdin_open: true
+    tty: true
     volumes:
       - ~/.openclaw:/home/node/.openclaw
       - ~/.openclaw/workspace:/home/node/.openclaw/workspace
-    stdin_open: true
-    tty: true
+    environment:
+      - NODE_ENV=production
+      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-}
     init: true
     profiles: ["cli"]
