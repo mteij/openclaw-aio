@@ -41,12 +41,14 @@ RUN /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/instal
 ENV PATH="/home/linuxbrew/.linuxbrew/bin:${PATH}"
 RUN echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /home/node/.bashrc
 
-# --- 4b. Install Brew Packages ---
+# --- 4b. Configure Brew Taps (for all variants, enables web UI installs) ---
+RUN brew tap steipete/tap && \
+    brew tap openhue/cli
+
+# --- 4c. Install Brew Packages ---
 # BREW_PACKAGES: "DEFAULT" (none), "FULL" (all skill tools), or custom list
 ARG BREW_PACKAGES="DEFAULT"
 RUN if [ "$BREW_PACKAGES" = "FULL" ]; then \
-      brew tap steipete/tap && \
-      brew tap openhue/cli && \
       brew install gh ffmpeg ripgrep tmux openai-whisper himalaya uv \
         gemini-cli openhue-cli \
         gifgrep gog goplaces camsnap obsidian-cli ordercli sag songsee summarize wacli; \
@@ -62,11 +64,19 @@ RUN node /app/node_modules/playwright-core/cli.js install-deps
 RUN node /app/node_modules/playwright-core/cli.js install chromium firefox webkit
 
 # --- 6. Final Config ---
-RUN mkdir -p /home/node/.openclaw /home/node/.openclaw/workspace \
+RUN mkdir -p /home/node/.openclaw /home/node/.openclaw/workspace /home/node/.npm-global \
     && chown -R node:node /home/node /app \
     && chmod -R 755 /home/node/.openclaw
 
+# --- 6b. Configure npm global for node user ---
 USER node
+ENV NPM_CONFIG_PREFIX=/home/node/.npm-global
+ENV PATH="/home/node/.npm-global/bin:${PATH}"
+
+# --- 6c. Install npm global packages (for FULL variant) ---
+RUN if [ "$BREW_PACKAGES" = "FULL" ]; then \
+      npm install -g clawhub @steipete/bird @steipete/oracle mcporter; \
+    fi
 WORKDIR /home/node
 ENV NODE_ENV=production
 ENV PATH="/app/node_modules/.bin:${PATH}"
