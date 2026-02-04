@@ -45,15 +45,15 @@ RUN echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /home/node/
 
 # --- 4b. Configure Brew Taps (for all variants, enables web UI installs) ---
 RUN brew tap steipete/tap && \
-    brew tap openhue/cli
+    brew tap openhue/cli && \
+    brew tap yakitrak/yakitrak
 
 # --- 4c. Install Brew Packages ---
 # BREW_PACKAGES: "DEFAULT" (none), "FULL" (all skill tools), or custom list
 ARG BREW_PACKAGES="DEFAULT"
-RUN if [ "$BREW_PACKAGES" = "FULL" ]; then \
       brew install gh ffmpeg ripgrep tmux openai-whisper himalaya uv \
         gemini-cli openhue/cli/openhue-cli \
-        gifgrep gog goplaces camsnap obsidian-cli ordercli sag songsee summarize wacli; \
+        gifgrep gogcli goplaces obsidian-cli ordercli sag songsee wacli; \
     elif [ "$BREW_PACKAGES" != "DEFAULT" ] && [ -n "$BREW_PACKAGES" ]; then \
       brew install $BREW_PACKAGES; \
     fi

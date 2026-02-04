@@ -24,4 +24,4 @@ docker compose up -d openclaw-gateway
 
 **Default:** Homebrew installed and ready. Install packages as needed with `brew install <package>`.
 
-**Full:** gh, ffmpeg, ripgrep, tmux, whisper, himalaya, uv, gemini-cli, openhue-cli, gifgrep, gog, goplaces, camsnap, obsidian-cli, ordercli, sag, songsee, summarize, wacli
+**Full:** gh, ffmpeg, ripgrep, tmux, whisper, himalaya, uv, gemini-cli, openhue-cli, gifgrep, gogcli, goplaces, obsidian-cli, ordercli, sag, songsee, wacli
