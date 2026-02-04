@@ -51,6 +51,7 @@ RUN brew tap steipete/tap && \
 # --- 4c. Install Brew Packages ---
 # BREW_PACKAGES: "DEFAULT" (none), "FULL" (all skill tools), or custom list
 ARG BREW_PACKAGES="DEFAULT"
+RUN if [ "$BREW_PACKAGES" = "FULL" ]; then \
       brew install gh ffmpeg ripgrep tmux openai-whisper himalaya uv \
         gemini-cli openhue/cli/openhue-cli \
         gifgrep gogcli goplaces obsidian-cli ordercli sag songsee wacli; \
