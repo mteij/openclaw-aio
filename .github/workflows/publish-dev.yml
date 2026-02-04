@@ -54,9 +54,8 @@ jobs:
             exit 0
           fi
 
-          # Scheduled run: get last 24 commits and filter unbuilt ones
-          echo "Fetching recent commits from OpenClaw main branch..."
-          COMMITS=$(curl -s "https://api.github.com/repos/openclaw/openclaw/commits?sha=main&per_page=24" | jq -r '.[].sha')
+          echo "Fetching latest commit from OpenClaw main branch..."
+          COMMITS=$(curl -s "https://api.github.com/repos/openclaw/openclaw/commits?sha=main&per_page=1" | jq -r '.[].sha')
 
           MATRIX="["
           COUNT=0
