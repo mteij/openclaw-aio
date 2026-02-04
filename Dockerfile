@@ -21,7 +21,9 @@ WORKDIR /app
 ARG OPENCLAW_VERSION=main
 
 # Clone the specific release tag (e.g., v2026.2.1)
-RUN git clone --depth 1 --branch ${OPENCLAW_VERSION} https://github.com/openclaw/openclaw.git . && \
+# Use --filter=blob:none to support both tags and commit SHAs efficiently
+RUN git clone --filter=blob:none https://github.com/openclaw/openclaw.git . && \
+    git checkout ${OPENCLAW_VERSION} && \
     echo "Building OpenClaw Version: ${OPENCLAW_VERSION}"
 
 RUN pnpm install --frozen-lockfile
@@ -50,7 +52,7 @@ RUN brew tap steipete/tap && \
 ARG BREW_PACKAGES="DEFAULT"
 RUN if [ "$BREW_PACKAGES" = "FULL" ]; then \
       brew install gh ffmpeg ripgrep tmux openai-whisper himalaya uv \
-        gemini-cli openhue-cli \
+        gemini-cli openhue/cli/openhue-cli \
         gifgrep gog goplaces camsnap obsidian-cli ordercli sag songsee summarize wacli; \
     elif [ "$BREW_PACKAGES" != "DEFAULT" ] && [ -n "$BREW_PACKAGES" ]; then \
       brew install $BREW_PACKAGES; \
@@ -58,8 +60,8 @@ RUN if [ "$BREW_PACKAGES" = "FULL" ]; then \
 
 # --- 5. Install Playwright ---
 USER root
-ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-RUN mkdir -p /ms-playwright && chmod 777 /ms-playwright
+ENV PLAYWRIGHT_BROWSERS_PATH=/home/node/.cache/ms-playwright
+RUN mkdir -p /home/node/.cache/ms-playwright && chmod 777 /home/node/.cache/ms-playwright
 RUN node /app/node_modules/playwright-core/cli.js install-deps
 RUN node /app/node_modules/playwright-core/cli.js install chromium firefox webkit
 
