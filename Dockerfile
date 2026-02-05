@@ -14,8 +14,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /
 
 ARG OPENCLAW_VERSION=main
 
-# Clone and build
-RUN git clone --depth=1 --branch ${OPENCLAW_VERSION} https://github.com/openclaw/openclaw.git . && \
+# Clone and build (handles both tags and commit SHAs)
+RUN git clone --filter=blob:none https://github.com/openclaw/openclaw.git . && \
+    git fetch --depth=1 origin ${OPENCLAW_VERSION} && \
+    git checkout FETCH_HEAD && \
     rm -rf .git
 
 RUN pnpm install --frozen-lockfile
