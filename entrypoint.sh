@@ -6,6 +6,10 @@ set -e
 # Handles permissions, first-boot setup, and doctor fixes automatically
 # =============================================================================
 
+# Ensure PATH includes Homebrew and npm-global for all child processes
+export PATH="/home/linuxbrew/.linuxbrew/bin:/home/node/.npm-global/bin:${PATH}"
+export NPM_CONFIG_PREFIX="/home/node/.npm-global"
+
 OPENCLAW_DIR="/home/node/.openclaw"
 FIRST_BOOT_MARKER="$OPENCLAW_DIR/.docker-initialized"
 
