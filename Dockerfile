@@ -43,9 +43,9 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 
-# Install runtime dependencies (including what Homebrew needs)
+# Install runtime dependencies (minimal - Homebrew can use bottles)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl ca-certificates procps git bash build-essential \
+    curl ca-certificates procps git \
     && rm -rf /var/lib/apt/lists/*
 
 # Setup directories and user
@@ -63,8 +63,14 @@ RUN brew tap steipete/tap && \
     brew cleanup --prune=all && \
     rm -rf "$(brew --cache)"
 
-# Install brew packages for FULL variant
+# Install brew packages for FULL variant (requires build tools)
 ARG BREW_PACKAGES="DEFAULT"
+USER root
+RUN if [ "$BREW_PACKAGES" = "FULL" ]; then \
+      apt-get update && apt-get install -y --no-install-recommends build-essential && \
+      rm -rf /var/lib/apt/lists/*; \
+    fi
+USER node
 RUN if [ "$BREW_PACKAGES" = "FULL" ]; then \
       brew install gh ffmpeg ripgrep tmux openai-whisper himalaya uv \
         gemini-cli openhue/cli/openhue-cli \
@@ -104,5 +110,12 @@ WORKDIR /home/node
 ENV NODE_ENV=production
 ENV PATH="/app/node_modules/.bin:${PATH}"
 
-ENTRYPOINT ["node", "/app/dist/index.js"]
+# Copy and setup entrypoint script (as root)
+USER root
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Switch back to node user for runtime
+USER node
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["--help"]
