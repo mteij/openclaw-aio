@@ -3,83 +3,84 @@ FROM node:22-bookworm
 LABEL org.opencontainers.image.source="https://github.com/MTEIJ/openclaw-aio"
 LABEL org.opencontainers.image.description="OpenClaw AIO: All-in-one OpenClaw docker image"
 
-# --- 1. Install System Dependencies ---
-RUN apt-get update && apt-get install -y \
-    git curl jq unzip ca-certificates \
-    build-essential procps python3 sudo \
-    && rm -rf /var/lib/apt/lists/*
-
-# --- 2. Install Bun ---
+# --- 1. Install Bun (required for build scripts) ---
 RUN curl -fsSL https://bun.sh/install | bash
 ENV PATH="/root/.bun/bin:${PATH}"
 
 RUN corepack enable
 WORKDIR /app
 
-# --- 3. Build Specific Version (The Magic Part) ---
-# This argument will be passed by GitHub Actions
+# --- 2. Build Specific Version ---
 ARG OPENCLAW_VERSION=main
 
-# Clone the specific release tag (e.g., v2026.2.1)
-# Use --filter=blob:none to support both tags and commit SHAs efficiently
-RUN git clone --filter=blob:none https://github.com/openclaw/openclaw.git . && \
+# Clone and checkout specific version
+RUN git clone --filter=blob:none --depth=1 https://github.com/openclaw/openclaw.git . && \
+    git fetch --depth=1 origin ${OPENCLAW_VERSION} && \
     git checkout ${OPENCLAW_VERSION} && \
+    rm -rf .git && \
     echo "Building OpenClaw Version: ${OPENCLAW_VERSION}"
 
 RUN pnpm install --frozen-lockfile
 RUN OPENCLAW_A2UI_SKIP_MISSING=1 pnpm build
 
-# Force bash for UI build
-RUN npm_config_script_shell=bash pnpm ui:install
-RUN npm_config_script_shell=bash pnpm ui:build
+# Force pnpm for UI build (Bun may fail on ARM/Synology architectures)
+ENV OPENCLAW_PREFER_PNPM=1
+RUN pnpm ui:build
 
-# Clean up
-RUN rm -rf .git node_modules/.cache
+# Clean up build artifacts
+RUN rm -rf node_modules/.cache .pnpm-store
 
-# --- 4. Install Homebrew ---
+# --- 3. Install Homebrew (as node user) ---
 RUN mkdir -p /home/linuxbrew/.linuxbrew && chown -R node:node /home/linuxbrew
 USER node
-RUN /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ENV PATH="/home/linuxbrew/.linuxbrew/bin:${PATH}"
-RUN echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /home/node/.bashrc
 
-# --- 4b. Configure Brew Taps (for all variants, enables web UI installs) ---
+# Configure Brew Taps (enables web UI installs)
 RUN brew tap steipete/tap && \
     brew tap openhue/cli && \
-    brew tap yakitrak/yakitrak
+    brew tap yakitrak/yakitrak && \
+    brew cleanup --prune=all && \
+    rm -rf "$(brew --cache)"
 
-# --- 4c. Install Brew Packages ---
-# BREW_PACKAGES: "DEFAULT" (none), "FULL" (all skill tools), or custom list
+# --- 4. Install Brew Packages (FULL variant only) ---
 ARG BREW_PACKAGES="DEFAULT"
 RUN if [ "$BREW_PACKAGES" = "FULL" ]; then \
       brew install gh ffmpeg ripgrep tmux openai-whisper himalaya uv \
         gemini-cli openhue/cli/openhue-cli \
-        gifgrep gogcli goplaces obsidian-cli ordercli sag songsee wacli; \
+        gifgrep gogcli goplaces obsidian-cli ordercli sag songsee wacli && \
+      brew cleanup --prune=all && \
+      rm -rf "$(brew --cache)"; \
     elif [ "$BREW_PACKAGES" != "DEFAULT" ] && [ -n "$BREW_PACKAGES" ]; then \
-      brew install $BREW_PACKAGES; \
+      brew install $BREW_PACKAGES && \
+      brew cleanup --prune=all && \
+      rm -rf "$(brew --cache)"; \
     fi
 
-# --- 5. Install Playwright ---
+# --- 5. Install Playwright (with Chromium only) ---
 USER root
 ENV PLAYWRIGHT_BROWSERS_PATH=/home/node/.cache/ms-playwright
 RUN mkdir -p /home/node/.cache/ms-playwright && chmod 777 /home/node/.cache/ms-playwright
-RUN node /app/node_modules/playwright-core/cli.js install-deps
-RUN node /app/node_modules/playwright-core/cli.js install chromium
+# Use --with-deps to install ONLY Chromium and its specific dependencies (not all browsers)
+RUN node /app/node_modules/playwright-core/cli.js install --with-deps chromium && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # --- 6. Final Config ---
-RUN mkdir -p /home/node/.openclaw /home/node/.openclaw/workspace /home/node/.npm-global \
-    && chown -R node:node /home/node /app \
-    && chmod -R 755 /home/node/.openclaw
+RUN mkdir -p /home/node/.openclaw /home/node/.openclaw/workspace /home/node/.npm-global && \
+    chown -R node:node /home/node /app && \
+    chmod -R 755 /home/node/.openclaw
 
-# --- 6b. Configure npm global for node user ---
 USER node
 ENV NPM_CONFIG_PREFIX=/home/node/.npm-global
 ENV PATH="/home/node/.npm-global/bin:${PATH}"
 
-# --- 6c. Install npm global packages (for FULL variant) ---
+# Install npm global packages (FULL variant only)
 RUN if [ "$BREW_PACKAGES" = "FULL" ]; then \
-      npm install -g clawhub @steipete/bird @steipete/oracle mcporter; \
+      npm install -g clawhub @steipete/bird @steipete/oracle mcporter && \
+      npm cache clean --force; \
     fi
+
 WORKDIR /home/node
 ENV NODE_ENV=production
 ENV PATH="/app/node_modules/.bin:${PATH}"
