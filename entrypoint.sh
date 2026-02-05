@@ -13,12 +13,19 @@ export NPM_CONFIG_PREFIX="/home/node/.npm-global"
 OPENCLAW_DIR="/home/node/.openclaw"
 FIRST_BOOT_MARKER="$OPENCLAW_DIR/.docker-initialized"
 
-# 1. Fix directory permissions (the #1 issue users hit)
-if [ -d "$OPENCLAW_DIR" ]; then
-    chmod 700 "$OPENCLAW_DIR" 2>/dev/null || true
+# 1. Fix ownership if running as root (handles volume mount permission issues)
+#    Then re-exec as node user
+if [ "$(id -u)" = "0" ]; then
+    # Create and fix ownership of mounted directories
+    mkdir -p "$OPENCLAW_DIR" "$OPENCLAW_DIR/workspace" /home/node/.npm-global
+    chown -R node:node "$OPENCLAW_DIR" /home/node/.npm-global
+    chmod 700 "$OPENCLAW_DIR"
+    
+    # Re-execute this script as node user
+    exec gosu node "$0" "$@"
 fi
 
-# 2. Create required directories if missing
+# 2. Create required directories if missing (now running as node)
 mkdir -p "$OPENCLAW_DIR/workspace" 2>/dev/null || true
 
 # 3. Run doctor --fix on first boot only

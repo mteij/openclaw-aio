@@ -45,7 +45,7 @@ COPY --from=builder /app/package.json ./package.json
 
 # Install runtime dependencies (minimal - Homebrew can use bottles)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl ca-certificates procps git \
+    curl ca-certificates procps git gosu \
     && rm -rf /var/lib/apt/lists/*
 
 # Setup directories and user
@@ -115,7 +115,6 @@ USER root
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Switch back to node user for runtime
-USER node
+# Entrypoint runs as root to fix volume permissions, then drops to node
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["--help"]
