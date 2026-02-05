@@ -19,10 +19,8 @@ RUN apt-get update && \
 # --- 3. Build Specific Version ---
 ARG OPENCLAW_VERSION=main
 
-# Clone and checkout specific version
-RUN git clone --filter=blob:none --depth=1 https://github.com/openclaw/openclaw.git . && \
-    git fetch --depth=1 origin ${OPENCLAW_VERSION} && \
-    git checkout ${OPENCLAW_VERSION} && \
+# Clone specific version directly (--branch works with tags and branches)
+RUN git clone --depth=1 --branch ${OPENCLAW_VERSION} https://github.com/openclaw/openclaw.git . && \
     rm -rf .git && \
     echo "Building OpenClaw Version: ${OPENCLAW_VERSION}"
 
