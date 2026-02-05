@@ -21,6 +21,7 @@ RUN git clone --filter=blob:none https://github.com/openclaw/openclaw.git . && \
     rm -rf .git
 
 RUN pnpm install --frozen-lockfile
+
 RUN OPENCLAW_A2UI_SKIP_MISSING=1 pnpm build
 ENV OPENCLAW_PREFER_PNPM=1
 RUN pnpm ui:build
@@ -40,6 +41,9 @@ WORKDIR /app
 
 # Copy only what we need from builder
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/extensions ./extensions
+# Also copy dist/channels to valid plugin location if needed, 
+# but dist/channels is inside dist so it's covered by above line.
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 
