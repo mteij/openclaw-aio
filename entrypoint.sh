@@ -6,29 +6,49 @@ set -e
 # Handles permissions, first-boot setup, and doctor fixes automatically
 # =============================================================================
 
-# Ensure PATH includes Homebrew and npm-global for all child processes
-export PATH="/home/linuxbrew/.linuxbrew/bin:/home/node/.npm-global/bin:${PATH}"
-export NPM_CONFIG_PREFIX="/home/node/.npm-global"
-
 OPENCLAW_DIR="/home/node/.openclaw"
+NPM_GLOBAL_DIR="/home/node/.npm-global"
 FIRST_BOOT_MARKER="$OPENCLAW_DIR/.docker-initialized"
 
-# 1. Fix ownership if running as root (handles volume mount permission issues)
-#    Then re-exec as node user
+# =============================================================================
+# PHASE 1: Root-only operations (permission fixes)
+# =============================================================================
 if [ "$(id -u)" = "0" ]; then
-    # Create and fix ownership of mounted directories
-    mkdir -p "$OPENCLAW_DIR" "$OPENCLAW_DIR/workspace" /home/node/.npm-global
-    chown -R node:node "$OPENCLAW_DIR" /home/node/.npm-global
-    chmod 700 "$OPENCLAW_DIR"
+    # Create directories if they don't exist
+    mkdir -p "$OPENCLAW_DIR" "$OPENCLAW_DIR/workspace" "$NPM_GLOBAL_DIR"
+    
+    # Fix ownership on EVERY run (handles volume mount issues, host changes, etc.)
+    # Only chown if ownership is wrong (avoids unnecessary I/O on large directories)
+    if [ "$(stat -c '%U' "$OPENCLAW_DIR" 2>/dev/null)" != "node" ]; then
+        echo "🔧 Fixing ownership of $OPENCLAW_DIR..."
+        chown -R node:node "$OPENCLAW_DIR"
+    fi
+    
+    if [ "$(stat -c '%U' "$NPM_GLOBAL_DIR" 2>/dev/null)" != "node" ]; then
+        chown -R node:node "$NPM_GLOBAL_DIR"
+    fi
+    
+    # Ensure correct permissions
+    chmod 700 "$OPENCLAW_DIR" 2>/dev/null || true
     
     # Re-execute this script as node user
     exec gosu node "$0" "$@"
 fi
 
-# 2. Create required directories if missing (now running as node)
+# =============================================================================
+# PHASE 2: Node user operations (now running as node)
+# =============================================================================
+
+# Ensure PATH includes Homebrew and npm-global for all child processes
+export PATH="/home/linuxbrew/.linuxbrew/bin:$NPM_GLOBAL_DIR/bin:${PATH}"
+export NPM_CONFIG_PREFIX="$NPM_GLOBAL_DIR"
+
+# Create workspace if missing
 mkdir -p "$OPENCLAW_DIR/workspace" 2>/dev/null || true
 
-# 3. Run doctor --fix on first boot only
+# =============================================================================
+# PHASE 3: First boot setup
+# =============================================================================
 if [ ! -f "$FIRST_BOOT_MARKER" ]; then
     echo "🦞 OpenClaw AIO - First boot detected"
     echo "   Running doctor --fix to ensure clean configuration..."
@@ -45,5 +65,7 @@ if [ ! -f "$FIRST_BOOT_MARKER" ]; then
     echo ""
 fi
 
-# 4. Execute the actual command passed to the container
+# =============================================================================
+# PHASE 4: Execute the actual command
+# =============================================================================
 exec node /app/dist/index.js "$@"
