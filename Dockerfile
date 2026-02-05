@@ -64,7 +64,7 @@ USER root
 ENV PLAYWRIGHT_BROWSERS_PATH=/home/node/.cache/ms-playwright
 RUN mkdir -p /home/node/.cache/ms-playwright && chmod 777 /home/node/.cache/ms-playwright
 RUN node /app/node_modules/playwright-core/cli.js install-deps
-RUN node /app/node_modules/playwright-core/cli.js install chromium firefox webkit
+RUN node /app/node_modules/playwright-core/cli.js install chromium
 
 # --- 6. Final Config ---
 RUN mkdir -p /home/node/.openclaw /home/node/.openclaw/workspace /home/node/.npm-global \
