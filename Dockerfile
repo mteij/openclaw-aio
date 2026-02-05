@@ -26,7 +26,7 @@ ENV OPENCLAW_PREFER_PNPM=1
 RUN pnpm ui:build
 
 # Prune dev dependencies - keep only production
-RUN pnpm prune --prod
+RUN CI=true pnpm prune --prod
 
 # =============================================================================
 # STAGE 2: Runtime (much smaller!)
@@ -43,9 +43,9 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 
-# Install minimal runtime dependencies
+# Install runtime dependencies (including what Homebrew needs)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl ca-certificates procps \
+    curl ca-certificates procps git bash build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Setup directories and user
@@ -85,9 +85,9 @@ RUN node /app/node_modules/playwright-core/cli.js install --with-deps chromium &
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Final setup
+# Final setup - only chown the specific directories we created (not /home/node which includes Homebrew)
 RUN mkdir -p /home/node/.openclaw /home/node/.openclaw/workspace /home/node/.npm-global && \
-    chown -R node:node /home/node /app && \
+    chown -R node:node /home/node/.openclaw /home/node/.npm-global && \
     chmod -R 755 /home/node/.openclaw
 
 USER node
