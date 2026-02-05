@@ -10,7 +10,13 @@ ENV PATH="/root/.bun/bin:${PATH}"
 RUN corepack enable
 WORKDIR /app
 
-# --- 2. Build Specific Version ---
+# --- 2. Install git (not in base image) ---
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# --- 3. Build Specific Version ---
 ARG OPENCLAW_VERSION=main
 
 # Clone and checkout specific version
