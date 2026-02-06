@@ -42,6 +42,13 @@ WORKDIR /app
 # Copy only what we need from builder
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/extensions ./extensions
+COPY --from=builder /app/docs ./docs
+COPY --from=builder /app/assets ./assets
+COPY --from=builder /app/skills ./skills
+COPY --from=builder /app/openclaw.mjs ./openclaw.mjs
+COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/README.md ./README.md
+COPY --from=builder /app/LICENSE ./LICENSE
 # Also copy dist/channels to valid plugin location if needed, 
 # but dist/channels is inside dist so it's covered by above line.
 COPY --from=builder /app/node_modules ./node_modules
