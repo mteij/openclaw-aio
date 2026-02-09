@@ -115,6 +115,10 @@ WORKDIR /home/node
 ENV NODE_ENV=production
 ENV PATH="/app/node_modules/.bin:${PATH}"
 
+# Add openclaw CLI wrapper for interactive shells
+RUN echo '#!/bin/bash\nexec node /app/dist/index.js "$@"' > /usr/local/bin/openclaw && \
+    chmod +x /usr/local/bin/openclaw
+
 
 # Copy and setup entrypoint script (as root)
 USER root
