@@ -1,0 +1,69 @@
+#!/bin/bash
+# Wrapper for apt-get to auto-persist packages
+# Saves installed packages to /home/node/.openclaw/apt-packages.txt
+
+PERSIST_FILE="/home/node/.openclaw/apt-packages.txt"
+REAL_CMD="/usr/local/bin/apt-get-original" # Will rename original binary or call absolute path? 
+# Better: rely on PATH. If this script is in /app/scripts/wrappers and that's first in PATH,
+# then calling /usr/bin/apt-get or just `command apt-get` might work if I'm careful.
+# Actually, the best way for wrappers is to not rename the system binary but use absolute path for the real one.
+# System apt-get is usually /usr/bin/apt-get.
+
+REAL_CMD="/usr/bin/apt-get"
+
+# Ensure directory exists (if running as root, might need to mkdir)
+if [ ! -d "/home/node/.openclaw" ]; then
+    mkdir -p "/home/node/.openclaw"
+    chown node:node "/home/node/.openclaw"
+fi
+
+if [ ! -f "$PERSIST_FILE" ]; then
+    touch "$PERSIST_FILE"
+    chown node:node "$PERSIST_FILE"
+fi
+
+# Function to update persistence file
+update_persistence() {
+    local action="$1"
+    shift
+    local packages=()
+    
+    # Filter out flags (arguments starting with -)
+    for arg in "$@"; do
+        if [[ "$arg" != -* ]]; then
+            packages+=("$arg")
+        fi
+    done
+
+    if [ ${#packages[@]} -eq 0 ]; then
+        return
+    fi
+
+    if [ "$action" == "install" ]; then
+        for pkg in "${packages[@]}"; do
+            if ! grep -Fxq "$pkg" "$PERSIST_FILE"; then
+                echo "$pkg" >> "$PERSIST_FILE"
+            fi
+        done
+    elif [ "$action" == "remove" ]; then
+        # Create temp file
+        tmp=$(mktemp)
+        # Copy current file excluding removed packages
+        grep -vFf <(printf "%s\n" "${packages[@]}") "$PERSIST_FILE" > "$tmp" || true
+        cat "$tmp" > "$PERSIST_FILE"
+        rm "$tmp"
+    fi
+    
+    # Ensure ownership is correct
+    chown node:node "$PERSIST_FILE"
+}
+
+# Check command
+if [ "$1" == "install" ]; then
+    update_persistence "install" "${@:2}"
+elif [ "$1" == "remove" ] || [ "$1" == "purge" ]; then
+    update_persistence "remove" "${@:2}"
+fi
+
+# Execute original command
+exec "$REAL_CMD" "$@"

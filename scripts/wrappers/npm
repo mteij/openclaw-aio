@@ -1,0 +1,66 @@
+#!/bin/bash
+# Wrapper for npm to auto-persist global packages
+# Saves installed packages to ~/.openclaw/npm-packages.txt
+
+PERSIST_FILE="$HOME/.openclaw/npm-packages.txt"
+REAL_CMD="/usr/local/bin/npm" # Or wherever the node base image puts it. Typically /usr/local/bin/npm.
+
+# Detect if current invocation is global
+is_global=false
+args=("$@")
+for arg in "${args[@]}"; do
+    if [ "$arg" == "-g" ] || [ "$arg" == "--global" ]; then
+        is_global=true
+        break
+    fi
+done
+
+if [ "$is_global" = true ]; then
+    mkdir -p "$(dirname "$PERSIST_FILE")"
+    touch "$PERSIST_FILE"
+
+    update_persistence() {
+        local action="$1"
+        shift
+        local packages=()
+        
+        for arg in "$@"; do
+            # Skip flags and common args
+            if [[ "$arg" != -* ]] && [[ "$arg" != "install" ]] && [[ "$arg" != "i" ]] && [[ "$arg" != "uninstall" ]] && [[ "$arg" != "rm" ]]; then
+                packages+=("$arg")
+            fi
+        done
+
+        if [ ${#packages[@]} -eq 0 ]; then return; fi
+
+        if [ "$action" == "install" ]; then
+            for pkg in "${packages[@]}"; do
+                if ! grep -Fxq "$pkg" "$PERSIST_FILE"; then
+                    echo "$pkg" >> "$PERSIST_FILE"
+                fi
+            done
+        elif [ "$action" == "uninstall" ]; then
+            tmp=$(mktemp)
+            grep -vFf <(printf "%s\n" "${packages[@]}") "$PERSIST_FILE" > "$tmp" || true
+            cat "$tmp" > "$PERSIST_FILE"
+            rm "$tmp"
+        fi
+    }
+
+    cmd="${args[0]}"
+    if [ "$cmd" == "install" ] || [ "$cmd" == "i" ] || [ "$cmd" == "add" ]; then
+        update_persistence "install" "${args[@]}"
+    elif [ "$cmd" == "uninstall" ] || [ "$cmd" == "remove" ] || [ "$cmd" == "rm" ]; then
+        update_persistence "uninstall" "${args[@]}"
+    fi
+fi
+
+# Fallback to finding real npm if /usr/local/bin/npm isn't it
+if [ ! -x "$REAL_CMD" ]; then
+    REAL_CMD=$(which npm | grep -v "/app/scripts/wrappers/npm" | head -n 1)
+fi
+
+# If we still can't find it (recursion loop?), assume /usr/local/bin/npm or /usr/bin/npm
+if [ -z "$REAL_CMD" ]; then REAL_CMD="/usr/local/bin/npm"; fi
+
+exec "$REAL_CMD" "$@"

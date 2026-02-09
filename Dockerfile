@@ -115,6 +115,10 @@ WORKDIR /home/node
 ENV NODE_ENV=production
 ENV PATH="/app/node_modules/.bin:${PATH}"
 
+COPY scripts/wrappers ./scripts/wrappers
+RUN chmod +x ./scripts/wrappers/*
+ENV PATH="/app/scripts/wrappers:${PATH}"
+
 # Copy and setup entrypoint script (as root)
 USER root
 COPY entrypoint.sh /entrypoint.sh

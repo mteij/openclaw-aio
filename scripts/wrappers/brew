@@ -1,0 +1,49 @@
+#!/bin/bash
+# Wrapper for brew to auto-persist packages
+# Saves installed packages to ~/.openclaw/brew-packages.txt
+
+PERSIST_FILE="$HOME/.openclaw/brew-packages.txt"
+REAL_CMD="/home/linuxbrew/.linuxbrew/bin/brew"
+
+# Ensure directory exists
+mkdir -p "$(dirname "$PERSIST_FILE")"
+touch "$PERSIST_FILE"
+
+# Function to update persistence file
+update_persistence() {
+    local action="$1"
+    shift
+    local packages=()
+    
+    for arg in "$@"; do
+        if [[ "$arg" != -* ]]; then
+            packages+=("$arg")
+        fi
+    done
+
+    if [ ${#packages[@]} -eq 0 ]; then
+        return
+    fi
+
+    if [ "$action" == "install" ]; then
+        for pkg in "${packages[@]}"; do
+            if ! grep -Fxq "$pkg" "$PERSIST_FILE"; then
+                echo "$pkg" >> "$PERSIST_FILE"
+            fi
+        done
+    elif [ "$action" == "uninstall" ]; then
+        tmp=$(mktemp)
+        grep -vFf <(printf "%s\n" "${packages[@]}") "$PERSIST_FILE" > "$tmp" || true
+        cat "$tmp" > "$PERSIST_FILE"
+        rm "$tmp"
+    fi
+}
+
+# Check command
+if [ "$1" == "install" ]; then
+    update_persistence "install" "${@:2}"
+elif [ "$1" == "uninstall" ] || [ "$1" == "remove" ]; then
+    update_persistence "uninstall" "${@:2}"
+fi
+
+exec "$REAL_CMD" "$@"
