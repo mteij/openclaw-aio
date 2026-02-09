@@ -123,8 +123,9 @@ fi
 # =============================================================================
 # PHASE 4: Execute the actual command
 # =============================================================================
-# Check if first argument is a command in PATH (e.g. bash, sh, npm)
-if command -v "$1" >/dev/null 2>&1; then
+# Check if first argument is an absolute path or specific allowed command (bash, sh, openclaw)
+# We avoid `command -v` because it shadows CLI commands like 'install' which are also system commands.
+if [[ "$1" == /* ]] || [[ "$1" == "bash" ]] || [[ "$1" == "sh" ]] || [[ "$1" == "openclaw" ]]; then
     exec "$@"
 else
     # Otherwise assume it's an OpenClaw CLI command/flag

@@ -124,6 +124,8 @@ jobs:
             BREW_PACKAGES=DEFAULT
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:dev-${{ matrix.commit.short_sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   # Job 3: Update dev-latest tag after all builds complete
   update-latest:

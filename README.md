@@ -7,7 +7,7 @@ Pre-built [OpenClaw](https://github.com/openclaw/openclaw) Docker image with Hom
 ```bash
 git clone https://github.com/MTEIJ/openclaw-aio.git && cd openclaw-aio
 cp .env.example .env
-docker compose run --rm openclaw-cli onboard
+docker compose run --rm openclaw-gateway onboard
 docker compose up -d openclaw-gateway
 ```
 

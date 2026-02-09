@@ -39,20 +39,10 @@ LABEL org.opencontainers.image.description="OpenClaw AIO: All-in-one OpenClaw do
 
 WORKDIR /app
 
-# Copy only what we need from builder
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/extensions ./extensions
-COPY --from=builder /app/docs ./docs
-COPY --from=builder /app/assets ./assets
-COPY --from=builder /app/skills ./skills
-COPY --from=builder /app/openclaw.mjs ./openclaw.mjs
-COPY --from=builder /app/scripts ./scripts
-COPY --from=builder /app/README.md ./README.md
-COPY --from=builder /app/LICENSE ./LICENSE
-# Also copy dist/channels to valid plugin location if needed, 
-# but dist/channels is inside dist so it's covered by above line.
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
+# =============================================================================
+# OPTIMIZATION: Install heavy dependencies BEFORE copying app code
+# This ensures these layers are cached even if src changes
+# =============================================================================
 
 # Install runtime dependencies (minimal - Homebrew can use bottles)
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -88,36 +78,52 @@ RUN if [ "$BREW_PACKAGES" = "FULL" ]; then \
       rm -rf "$(brew --cache)"; \
     fi
 
-# Install Playwright (as root for system deps)
+# Install npm globals for FULL variant (Using node user)
+ENV NPM_CONFIG_PREFIX=/home/node/.npm-global
+ENV PATH="/home/node/.npm-global/bin:${PATH}"
+RUN if [ "$BREW_PACKAGES" = "FULL" ]; then \
+      mkdir -p /home/node/.npm-global && \
+      npm install -g clawhub @steipete/bird @steipete/oracle mcporter && \
+      npm cache clean --force; \
+    fi
+
+# Switch back to root for file copies and system setup
 USER root
+
+# Copy only what we need from builder
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/extensions ./extensions
+COPY --from=builder /app/docs ./docs
+COPY --from=builder /app/assets ./assets
+COPY --from=builder /app/skills ./skills
+COPY --from=builder /app/openclaw.mjs ./openclaw.mjs
+COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/README.md ./README.md
+COPY --from=builder /app/LICENSE ./LICENSE
+# Also copy dist/channels to valid plugin location if needed, 
+# but dist/channels is inside dist so it's covered by above line.
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+
+# Install Playwright (as root for system deps - requires node_modules from above)
 ENV PLAYWRIGHT_BROWSERS_PATH=/home/node/.cache/ms-playwright
 RUN mkdir -p /home/node/.cache/ms-playwright && chmod 777 /home/node/.cache/ms-playwright
 RUN node /app/node_modules/playwright-core/cli.js install --with-deps chromium && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Final setup - only chown the specific directories we created (not /home/node which includes Homebrew)
+# Final setup - setup workspace directories
 RUN mkdir -p /home/node/.openclaw /home/node/.openclaw/workspace /home/node/.npm-global && \
     chown -R node:node /home/node/.openclaw /home/node/.npm-global && \
     chmod -R 755 /home/node/.openclaw
 
 USER node
-ENV NPM_CONFIG_PREFIX=/home/node/.npm-global
-ENV PATH="/home/node/.npm-global/bin:${PATH}"
 
-# Install npm globals for FULL variant
-RUN if [ "$BREW_PACKAGES" = "FULL" ]; then \
-      npm install -g clawhub @steipete/bird @steipete/oracle mcporter && \
-      npm cache clean --force; \
-    fi
 
 WORKDIR /home/node
 ENV NODE_ENV=production
 ENV PATH="/app/node_modules/.bin:${PATH}"
 
-# Add openclaw CLI wrapper for interactive shells
-RUN echo '#!/bin/bash\nexec node /app/dist/index.js "$@"' > /usr/local/bin/openclaw && \
-    chmod +x /usr/local/bin/openclaw
 
 
 # Copy and setup entrypoint script (as root)

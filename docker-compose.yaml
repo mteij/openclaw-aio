@@ -20,20 +20,5 @@ services:
     command:
       ["gateway", "--bind", "${OPENCLAW_GATEWAY_BIND:-lan}", "--port", "18789"]
 
-  openclaw-cli:
-    image: ghcr.io/mteij/openclaw-aio:latest
-    container_name: openclaw-cli
-    stdin_open: true
-    tty: true
-    volumes:
-      - ~/.openclaw:/home/node/.openclaw
-      - ~/.openclaw/workspace:/home/node/.openclaw/workspace
-      - playwright-browsers:/home/node/.cache/ms-playwright
-    environment:
-      - NODE_ENV=production
-      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-}
-    init: true
-    profiles: ["cli"]
-
 volumes:
   playwright-browsers:
