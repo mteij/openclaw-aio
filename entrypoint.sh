@@ -123,4 +123,10 @@ fi
 # =============================================================================
 # PHASE 4: Execute the actual command
 # =============================================================================
-exec node /app/dist/index.js "$@"
+# Check if first argument is a command in PATH (e.g. bash, sh, npm)
+if command -v "$1" >/dev/null 2>&1; then
+    exec "$@"
+else
+    # Otherwise assume it's an OpenClaw CLI command/flag
+    exec node /app/dist/index.js "$@"
+fi

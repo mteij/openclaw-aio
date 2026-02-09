@@ -119,10 +119,12 @@ ENV PATH="/app/node_modules/.bin:${PATH}"
 # Copy and setup entrypoint script (as root)
 USER root
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN chmod +x /entrypoint.sh && \
+    sed -i 's/\r$//' /entrypoint.sh
 
 COPY scripts/wrappers /app/scripts/wrappers
-RUN chmod +x /app/scripts/wrappers/*
+RUN chmod +x /app/scripts/wrappers/* && \
+    sed -i 's/\r$//' /app/scripts/wrappers/*
 ENV PATH="/app/scripts/wrappers:${PATH}"
 
 # Entrypoint runs as root to fix volume permissions, then drops to node
