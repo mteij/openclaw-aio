@@ -46,7 +46,7 @@ WORKDIR /app
 
 
 # Install runtime dependencies (minimal - Homebrew can use bottles)
-run apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     curl ca-certificates procps git gosu build-essential \
     && rm -rf /var/lib/apt/lists/*
 
