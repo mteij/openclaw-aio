@@ -44,8 +44,9 @@ WORKDIR /app
 # This ensures these layers are cached even if src changes
 # =============================================================================
 
+
 # Install runtime dependencies (minimal - Homebrew can use bottles)
-RUN apt-get update && apt-get install -y --no-install-recommends \
+run apt-get update && apt-get install -y --no-install-recommends \
     curl ca-certificates procps git gosu build-essential \
     && rm -rf /var/lib/apt/lists/*
 
