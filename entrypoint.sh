@@ -81,24 +81,11 @@ mkdir -p "$OPENCLAW_DIR/workspace" 2>/dev/null || true
 # AUTO-PERSISTENCE RESTORE (User Level)
 # =============================================================================
 
-# Restore Brew Packages
-if [ -f "$OPENCLAW_DIR/brew-packages.txt" ]; then
-    BREW_PACKAGES=$(grep -vE '^\s*#|^\s*$' "$OPENCLAW_DIR/brew-packages.txt" | tr '\n' ' ')
-    if [ -n "$BREW_PACKAGES" ]; then
-        echo "🍺 Restoring persistent brew packages: $BREW_PACKAGES"
-        # We use the wrapper (which is now first in PATH) - it handles idempotency
-        brew install $BREW_PACKAGES || echo "⚠️ Brew restore failed"
-    fi
-fi
+# Brew/NPM restoration is now handled by scripts/bootstrap.js in Phase 4
 
-# Restore NPM Global Packages
-if [ -f "$OPENCLAW_DIR/npm-packages.txt" ]; then
-    NPM_PACKAGES=$(grep -vE '^\s*#|^\s*$' "$OPENCLAW_DIR/npm-packages.txt" | tr '\n' ' ')
-    if [ -n "$NPM_PACKAGES" ]; then
-        echo "📦 Restoring persistent npm global packages: $NPM_PACKAGES"
-        # We use the wrapper - it handles idempotency
-        npm install -g $NPM_PACKAGES || echo "⚠️ NPM restore failed"
-    fi
+# Ensure Gateway Token is configured (for CLI/Playwright access)
+if [ -n "$OPENCLAW_GATEWAY_TOKEN" ]; then
+    node /app/scripts/configure-token.js
 fi
 
 # =============================================================================
@@ -125,7 +112,9 @@ fi
 # =============================================================================
 # Check if first argument is an absolute path or specific allowed command (bash, sh, openclaw)
 # We avoid `command -v` because it shadows CLI commands like 'install' which are also system commands.
-if [[ "$1" == /* ]] || [[ "$1" == "bash" ]] || [[ "$1" == "sh" ]] || [[ "$1" == "openclaw" ]]; then
+if [[ "$1" == /* ]] || [[ "$1" == "bash" ]] || [[ "$1" == "sh" ]] || [[ "$1" == "openclaw" ]] || [[ "$1" == "node" ]] || [[ "$1" == "npm" ]] || [[ "$1" == "npx" ]]; then
+    # Run integrated bootstrap (Checks + Restore)
+    node /app/scripts/bootstrap.js || true
     exec "$@"
 else
     # Otherwise assume it's an OpenClaw CLI command/flag

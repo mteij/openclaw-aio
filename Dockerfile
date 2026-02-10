@@ -122,6 +122,8 @@ USER node
 WORKDIR /home/node
 ENV NODE_ENV=production
 ENV PATH="/app/node_modules/.bin:${PATH}"
+ENV NODE_PATH="/app/node_modules"
+
 
 
 
@@ -132,6 +134,8 @@ RUN chmod +x /entrypoint.sh && \
     sed -i 's/\r$//' /entrypoint.sh
 
 COPY scripts/wrappers /app/scripts/wrappers
+COPY scripts/configure-token.js /app/scripts/configure-token.js
+COPY scripts/bootstrap.js /app/scripts/bootstrap.js
 RUN chmod +x /app/scripts/wrappers/* && \
     sed -i 's/\r$//' /app/scripts/wrappers/*
 ENV PATH="/app/scripts/wrappers:${PATH}"
