@@ -37,6 +37,7 @@ if [ "$is_global" = true ]; then
             for pkg in "${packages[@]}"; do
                 if ! grep -Fxq "$pkg" "$PERSIST_FILE"; then
                     echo "$pkg" >> "$PERSIST_FILE"
+                    echo "📦 [OpenClaw-AIO] Persisting global npm package: $pkg"
                 fi
             done
         elif [ "$action" == "uninstall" ]; then
@@ -44,6 +45,7 @@ if [ "$is_global" = true ]; then
             grep -vFf <(printf "%s\n" "${packages[@]}") "$PERSIST_FILE" > "$tmp" || true
             cat "$tmp" > "$PERSIST_FILE"
             rm "$tmp"
+            echo "🗑️ [OpenClaw-AIO] Updated persistent npm global packages (removal)"
         fi
     }
 

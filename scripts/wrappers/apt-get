@@ -43,6 +43,7 @@ update_persistence() {
         for pkg in "${packages[@]}"; do
             if ! grep -Fxq "$pkg" "$PERSIST_FILE"; then
                 echo "$pkg" >> "$PERSIST_FILE"
+                echo "📦 [OpenClaw-AIO] Persisting apt package: $pkg"
             fi
         done
     elif [ "$action" == "remove" ]; then
@@ -52,6 +53,7 @@ update_persistence() {
         grep -vFf <(printf "%s\n" "${packages[@]}") "$PERSIST_FILE" > "$tmp" || true
         cat "$tmp" > "$PERSIST_FILE"
         rm "$tmp"
+        echo "🗑️ [OpenClaw-AIO] Updated persistent apt packages (removal)"
     fi
     
     # Ensure ownership is correct
