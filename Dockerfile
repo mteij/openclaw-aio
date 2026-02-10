@@ -140,6 +140,9 @@ ENV PATH="/app/scripts/wrappers:${PATH}"
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:18789/ || exit 1
 
+# Enforce wrapper PATH priority for interactive sessions
+RUN echo 'export PATH="/app/scripts/wrappers:$PATH"' >> /etc/bash.bashrc
+
 # Entrypoint runs as root to fix volume permissions, then drops to node
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["--help"]
